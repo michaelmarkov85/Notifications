@@ -81,7 +81,7 @@ namespace PubSubPublisher
 		{
 			BackendMessage b = new BackendMessage()
 			{
-				Type = messageType,
+				EventType = messageType,
 				Data = new { Recipient = recipient, Topic = topicId, Timestamp = DateTime.Now.ToLongTimeString() }
 			};
 			return b.ToString();

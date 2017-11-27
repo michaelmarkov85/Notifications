@@ -32,27 +32,47 @@ namespace Notifications.Services
 			if (!msg?.IsValid ?? true)
 				return;
 
-			switch (msg.Type.ToLower())
+			switch (msg.EventType.ToLower())
 			{
-				case "notification":
-					await ProcessBackendNotificationMessage(msg, ct);
+				case "offer_status_approved":
+				case "offer_status_rejected":
+				case "offer_status_expired":
+				case "offer_status_sold_out":
+				case "offer_status_inactive":
+					await ProcessOfferNotificationMessage(msg, ct);
+					break;
+				case "offer_purchased":
+					await ProcessOfferPurchaseNotificationMessage(msg, ct);
+					break;
+				case "offer_commented":
+					await ProcessOfferCommentNotificationMessage(msg, ct);
 					break;
 				default:
-					Console.WriteLine($"Couldn't find match action for message type '{msg.Type}'");
+					Console.WriteLine($"Couldn't find match action for message type '{msg.EventType}'");
 					break;
 			}
-
-
-			// Some logic, db storing...
-			//await _wsBroker.BroadcastToAllAsync(message);
 		}
 
-		private async Task ProcessBackendNotificationMessage(BackendMessage msg, CancellationToken ct)
+		private async Task ProcessOfferCommentNotificationMessage(BackendMessage msg, CancellationToken ct)
 		{
-			NotificationBackendMessage notificationMessage = msg.Data as NotificationBackendMessage;
-			notificationMessage = JsonConvert.DeserializeObject<NotificationBackendMessage>(JsonConvert.SerializeObject(msg.Data));
-			if (!notificationMessage?.IsValid ?? true)
+			// just for separation of types
+			await ProcessOfferNotificationMessage(msg, ct);
+		}
+
+		private async Task ProcessOfferPurchaseNotificationMessage(BackendMessage msg, CancellationToken ct)
+		{
+			// just for separation of types
+			await ProcessOfferNotificationMessage(msg, ct);
+		}
+
+		private async Task ProcessOfferNotificationMessage(BackendMessage msg, CancellationToken ct)
+		{
+			OfferNotification baseMsg = msg.Data as OfferNotification;
+			baseMsg = JsonConvert.DeserializeObject<OfferNotification>(JsonConvert.SerializeObject(msg.Data));
+			if (!baseMsg?.IsValid ?? true)
 				return;
+
+			string Recipient = GetOwnerByMerchantId(baseMsg.MerchantId);
 
 			FrontendMessage messageToSend = new FrontendMessage
 			{
@@ -60,7 +80,13 @@ namespace Notifications.Services
 				Data = msg.Data
 			};
 
-			await _wsBroker.SendAsync(messageToSend.ToString(), notificationMessage.Recipient);
+			await _wsBroker.SendAsync(messageToSend.ToString(), Recipient);
+		}
+
+		private string GetOwnerByMerchantId(string merchantId)
+		{
+			// TODO: get. Currently - first index.html user returned.
+			return "a6241f60-bf59-4cfe-8dcb-a17c81d7abb5";
 		}
 	}
 }

@@ -6,7 +6,7 @@ namespace Messages
 	[Serializable]
 	public class BackendMessage
 	{
-		public string Type { get; set; }
+		public string EventType { get; set; }
 		public dynamic Data { get; set; }
 
 		public BackendMessage()
@@ -14,13 +14,13 @@ namespace Messages
 
 		public BackendMessage(string type, dynamic data)
 		{
-			Type = type;
+			EventType = type;
 			Data = data;
 		}
 
 
 		[JsonIgnore]
-		public bool IsValid => !string.IsNullOrWhiteSpace(Type) && Data != null;
+		public bool IsValid => !string.IsNullOrWhiteSpace(EventType) && Data != null;
 
 		/// <summary>
 		/// Deserializes string into ClientMesage Object if valid string. 
