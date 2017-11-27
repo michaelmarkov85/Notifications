@@ -19,7 +19,7 @@ namespace Notifications
 			services.AddTransient<IBackendMessageHandler, Services.BackendMessageHandler>();
 			services.AddTransient<IIdentityProvider, Services.IdentityProvider>();
 			services.AddTransient<PubSub.PubSubProvider>(
-				// TODO: make it via configuration
+				// TODO: make it via configuration injection
 				sp => new PubSub.PubSubProvider(Environment.GetEnvironmentVariable("PUBSUB_PROJECT_ID"), 1000));
 		}
 

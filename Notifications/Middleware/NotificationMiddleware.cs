@@ -8,6 +8,15 @@ using Microsoft.AspNetCore.Http;
 
 namespace Notifications.Middleware
 {
+	/// <summary>
+	/// Middleware for processing WS HTTP initial handshakes and establish WS connection.
+	/// Connections are stored and accessed by IWsManager.
+	/// Identity of who is establishing connection from frontEnd is supplied by IIdentityProvider based on
+	/// token received in handshake's query string. Identity is stored as OwnerId in IWsManager and associated with WS.
+	/// One identity can have multiple WSs.
+	/// TODO: think of token revocation procedure.
+	/// Every WS connection gets subscription to a message by IWsBroker and callback from IFrontendMessageHandler.
+	/// </summary>
 	public class NotificationMiddleware
 	{
 		const string OWNER_QUERY_STRING_TOKEN_KEY = "owner";
@@ -54,6 +63,7 @@ namespace Notifications.Middleware
 			if (string.IsNullOrWhiteSpace(owner) || !Guid.TryParse(owner, out Guid g))
 				return;
 
+			// Adding socket to Manager and subscribing for new messages.
 			try
 			{
 				_wsManager.AddSocket(currentSocket, owner);
