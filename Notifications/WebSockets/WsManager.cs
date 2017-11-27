@@ -109,7 +109,7 @@ namespace Notifications.WebSockets
 				if (socketIds != null && socketIds.Count > 0)
 					foreach (string sId in socketIds)
 						if (_sockets.TryGetValue(sId, out WebSocket socket))
-							if (socket != null || socket.State == WebSocketState.Open)
+							if (socket != null && socket.State == WebSocketState.Open)
 								yield return socket;
 		}
 		public IEnumerable<WebSocket> GetSockets(List<string> recipients)

@@ -74,6 +74,7 @@ namespace Notifications.Middleware
 			}
 			catch (Exception ex)
 			{
+				// TODO: Cleanup - remove socket if Aborted
 				Console.WriteLine(ex.Message);
 			}
 		}
