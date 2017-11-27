@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Google.Api.Gax;
@@ -9,47 +10,53 @@ namespace Notifications.PubSub
 {
 	public class PubSubProvider
 	{
-		private readonly IBackendMessageHandler _beMessageHandler;
-		private static SubscriberClient _sub;
+		private readonly int _requestFrequancy;
+		private readonly string _projectId;
 
-		private const string HOST = "localhost";
-		private const int PORT = 8085;
+		private readonly SubscriberClient _sub;
 
-		private const string PROJECT_ID = "MyProjId";
-		readonly string[] TOPICS = new string[] { "Topic_1", "Topic_2" };
-
-		public PubSubProvider(IBackendMessageHandler backendMessageHandler)
+		public PubSubProvider(string projectId, int requestFrequancy)
 		{
-			_beMessageHandler = backendMessageHandler;
+			_projectId = projectId;
+			_requestFrequancy = requestFrequancy;
+			_sub = SubscriberClient.Create();
 		}
 
-
-
-		public void Start(Func<string, Task> messageHandler)
+		public void Start(List<(string topicId, string subscriptionId, Func<string, Task> messageHandler)> subsctiptions)
 		{
-			Grpc.Core.Channel chanel = new Grpc.Core.Channel(HOST, PORT, Grpc.Core.ChannelCredentials.Insecure);
-			_sub = SubscriberClient.Create(chanel);
-
-			foreach (string topic in TOPICS)
+			foreach (var s in subsctiptions)
 			{
-				TopicName topicName = new TopicName(PROJECT_ID, topic);
-				SubscriptionName subscriptionName = new SubscriptionName(PROJECT_ID, "s" + DateTime.Now.Ticks.ToString());
-				try
-				{
-					Subscription s = _sub.CreateSubscription(subscriptionName, topicName, null, 0);
-				}
-				catch (Grpc.Core.RpcException e)
-				when (e.Status.StatusCode == Grpc.Core.StatusCode.AlreadyExists)
-				{
-					// The subscription already exists. OK.
-				}
-				Task pullTask = Task.Factory.StartNew(() => PullLoop(subscriptionName,
-					(string msg) =>
-					{
-						messageHandler(msg);
-						//_beMessageHandler.ProcessMessage(msg);
-					}, new CancellationTokenSource().Token));
+				SubscriptionName subscriptionName = new SubscriptionName(_projectId, s.subscriptionId);
+				TopicName topic = new TopicName(_projectId, s.topicId);
 
+				// TODO: some handling
+				bool subscriptionExists = GetOrCreateSubscription(subscriptionName, topic);
+
+				Task pullTask = Task.Factory.StartNew(() => PullLoop(subscriptionName,
+					msg => s.messageHandler(msg), new CancellationTokenSource().Token));
+			}
+		}
+
+		private bool GetOrCreateSubscription(SubscriptionName subscriptionName, TopicName topic)
+		{
+			Subscription sub;
+			try
+			{
+				sub = _sub.CreateSubscription(subscriptionName, topic, null, 0);
+				return true;
+			}
+			catch (Grpc.Core.RpcException e)
+			when (e.Status.StatusCode == Grpc.Core.StatusCode.AlreadyExists)
+			{
+				return true;
+				// The subscription already exists. OK.
+			}
+			catch (Grpc.Core.RpcException e)
+			when (e.Status.StatusCode == Grpc.Core.StatusCode.PermissionDenied)
+			{
+				// Bad. Shouldn't happen.
+				// TODO: get permissions, get this logged. 
+				return false;
 			}
 		}
 
@@ -72,7 +79,6 @@ namespace Notifications.PubSub
 		private void PullOnce(SubscriptionName subscriptionName, Action<string> callback, CancellationToken cancellationToken)
 		{
 			// Pull some messages from the subscription.
-
 			var response = _sub.Pull(subscriptionName, false, 10,
 				CallSettings.FromCallTiming(
 					CallTiming.FromExpiration(
@@ -84,14 +90,13 @@ namespace Notifications.PubSub
 				Console.WriteLine("Pulled no messages.");
 				return;
 			}
-			var u = _sub.ListSubscriptions(new ProjectName(PROJECT_ID));
 			Console.WriteLine($"Pulled {response.ReceivedMessages.Count} messages.");
 			foreach (ReceivedMessage message in response.ReceivedMessages)
 			{
 				try
 				{
 					string msg = message.Message.Data.ToStringUtf8();
-					_beMessageHandler.ProcessMessage(msg);
+					callback(msg);
 				}
 				catch (Exception e)
 				{

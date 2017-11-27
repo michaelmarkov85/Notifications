@@ -1,7 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Notifications
@@ -17,7 +18,9 @@ namespace Notifications
 			services.AddTransient<IFrontendMessageHandler, Services.FrontendMessageHandler>();
 			services.AddTransient<IBackendMessageHandler, Services.BackendMessageHandler>();
 			services.AddTransient<IIdentityProvider, Services.IdentityProvider>();
-			services.AddTransient<PubSub.PubSubProvider>();
+			services.AddTransient<PubSub.PubSubProvider>(
+				// TODO: make it via configuration
+				sp => new PubSub.PubSubProvider(Environment.GetEnvironmentVariable("PUBSUB_PROJECT_ID"), 1000));
 		}
 
 		// This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -40,16 +43,26 @@ namespace Notifications
 
 			app.UseFileServer();
 
-			sp.GetService<PubSub.PubSubProvider>().Start((msg) =>
-				sp.GetService<IBackendMessageHandler>().ProcessMessage(msg)
-			);
+
+			// PUB SUB
+			// Working with Google PubSub requires an environment variable GOOGLE_APPLICATION_CREDENTIALS,
+			// pointing to json file with keys, defining user rights. 
+			// That file is granted by devops. Ask Aleksey B.
+			// Also put into variable PUBSUB_PROJECT_ID projectDd - for security reasons.
+
+			// Setting up and starting PubSub subscription -  internal loop
 
 
 
-			app.Run(async (context) =>
+			Func<string, Task> pubSubCallback = (msg) => sp.GetService<IBackendMessageHandler>().ProcessMessage(msg);
+
+			var subsctiptions = new List<(string topicId, string subscriptionId, Func<string, Task> messageHandler)>
 			{
-				await context.Response.WriteAsync("Hello World!");
-			});
+				//TODO: make it via configuration
+				("bus_offer_commented", "mm_of_cmnt_1", pubSubCallback)
+			};
+
+			sp.GetService<PubSub.PubSubProvider>().Start(subsctiptions);
 		}
 	}
 }
