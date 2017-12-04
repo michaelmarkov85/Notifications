@@ -123,7 +123,7 @@ namespace Notifications.WebSockets
 				await messageHandler(response, socket);
 			}
 
-			await KillSocket(socket, ct);
+			await _wsManager.KillSocket(socket, ct);
 		}
 
 		// Private
@@ -181,19 +181,6 @@ namespace Notifications.WebSockets
 					return await reader.ReadToEndAsync();
 				}
 			}
-		}
-
-		/// <summary>
-		/// Removes socket from WebsocketManager collection, closes connection
-		/// and disposes socket.
-		/// </summary>
-		/// <param name="socket">WebSocket object.</param>
-		/// <param name="ct">CancellationToken.</param>
-		private async Task KillSocket(WebSocket socket, CancellationToken ct)
-		{
-			await Task.Run(() => _wsManager.RemoveSocket(socket));
-			await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", ct);
-			socket.Dispose();
 		}
 	}
 }

@@ -76,6 +76,7 @@ namespace Notifications.Middleware
 			{
 				// TODO: Cleanup - remove socket if Aborted
 				Console.WriteLine(ex.Message);
+				await _wsManager.KillSocket(currentSocket, ct);
 			}
 		}
 

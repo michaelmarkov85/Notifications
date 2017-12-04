@@ -1,5 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Net.WebSockets;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Notifications
 {
@@ -11,5 +13,6 @@ namespace Notifications
 		IEnumerable<WebSocket> GetSockets(List<string> recipients);
 		IEnumerable<WebSocket> GetSockets(string recipient);
 		bool RemoveSocket(WebSocket socket);
+		Task KillSocket(WebSocket socket, CancellationToken ct);
 	}
 }

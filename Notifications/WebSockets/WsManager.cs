@@ -3,6 +3,8 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.WebSockets;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Notifications.WebSockets
 {
@@ -88,6 +90,18 @@ namespace Notifications.WebSockets
 							if (bag.Remove(socketId))
 								return true;
 			return false;
+		}
+		/// <summary>
+		/// Removes socket from WebsocketManager collection, closes connection
+		/// and disposes socket.
+		/// </summary>
+		/// <param name="socket">WebSocket object.</param>
+		/// <param name="ct">CancellationToken.</param>
+		public async Task KillSocket(WebSocket socket, CancellationToken ct)
+		{
+			await Task.Run(() => RemoveSocket(socket));
+			await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", ct);
+			socket.Dispose();
 		}
 
 		public IEnumerable<string> GetAllRecipients()
